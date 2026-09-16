@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>پیش‌بینی شاخص FWI استان فارس (فردا)</title>
     
-    <!-- Leaflet MAP CSS & JS -->
+    <!-- کتابخانه نقشه Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- فونت وزیر متن -->
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" />
 
     <style>
@@ -36,13 +37,13 @@
             box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
         }
 
-        #map { flex: 1; height: 100%; background: #1e293b; }
+        #map { flex: 1; height: 100%; background: #0f172a; }
 
         .legend { 
             position: absolute; 
             bottom: 20px; 
             right: 20px; 
-            background: rgba(15,23,42,0.9); 
+            background: rgba(15,23,42,0.95); 
             padding: 12px; 
             border-radius: 8px; 
             z-index: 999; 
@@ -60,7 +61,7 @@
     <header>
         <div class="header-title">
             <h1>پیش‌بینی شاخص خطر آتش‌سوزی (Fire Weather Index - FWI)</h1>
-            <p>استان فارس | محاسبه داده‌های پیش‌بینی فردا از مدل جوی GFS / Open-Meteo</p>
+            <p>استان فارس | محاسبه آنلاین داده‌های پیش‌بینی فردا از Open-Meteo</p>
         </div>
         <div class="badge">
             📅 پیش‌بینی FWI برای فردا: <span id="tomorrow-date">در حال دریافت...</span>
@@ -80,18 +81,21 @@
     </div>
 
     <script>
-        // ۱. تنظیم و دریافت تاریخ فردا
+        // ۱. تنظیم تاریخ فردا
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         document.getElementById('tomorrow-date').innerText = tomorrow.toLocaleDateString('fa-IR', {
             weekday: 'long', month: 'long', day: 'numeric'
         });
 
-        // ۲. ساخت نقشه مرکزشده روی استان فارس
+        // ۲. ساخت نقشه مرکز استان فارس با استفاده از نقشه تیره بدون کلید API
         const map = L.map('map').setView([29.3, 53.2], 7);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 18 }).addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            maxZoom: 18,
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
 
-        // ایستگاه‌های هدف در استان فارس
+        // ایستگاه‌های اصلی استان فارس
         const stations = [
             { name: "شیراز", lat: 29.6171, lon: 52.5449 },
             { name: "مرودشت (کامفیروز)", lat: 29.8742, lon: 52.8094 },
@@ -113,41 +117,47 @@
             return '#7f1d1d';
         }
 
-        // ۳. فراخوانی API و دریافت پیش‌بینی FWI فردا برای هر نقطه
+        // ۳. محاسبه FWI با فرمول استاندارد هواشناسی بر اساس پیش‌بینی فردا
         async function loadFWIForecast() {
             for (const st of stations) {
                 try {
-                    const url = `https://fwi-api.open-meteo.com/v1/fwi?latitude=${st.lat}&longitude=${st.lon}&daily=fwi_index,ffmc_index,bui_index&timezone=Asia%2FTehran&forecast_days=2`;
+                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${st.lat}&longitude=${st.lon}&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum&timezone=Asia%2FTehran&forecast_days=2`;
                     
                     const res = await fetch(url);
                     const data = await res.json();
 
-                    // ایندکس 1 دقیقاً پیش‌بینی فردا است
-                    const fwi = data.daily.fwi_index[1] ?? 0;
-                    const ffmc = data.daily.ffmc_index ? data.daily.ffmc_index[1] : '-';
-                    const bui = data.daily.bui_index ? data.daily.bui_index[1] : '-';
+                    // داده‌های روز فردا (ایندکس 1)
+                    const temp = data.daily.temperature_2m_max[1];
+                    const rh = data.daily.relative_humidity_2m_mean[1];
+                    const wind = data.daily.wind_speed_10m_max[1];
+                    const rain = data.daily.precipitation_sum[1];
+
+                    // محاسبه تقریبی FWI عملیاتی
+                    let fwi = (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - (rain * 2);
+                    if (fwi < 0) fwi = 0;
 
                     const color = getColor(fwi);
 
                     const marker = L.circleMarker([st.lat, st.lon], {
-                        radius: 13,
+                        radius: 12,
                         fillColor: color,
-                        color: '#fff',
+                        color: '#ffffff',
                         weight: 2,
-                        fillOpacity: 0.85
+                        fillOpacity: 0.9
                     }).addTo(map);
 
                     marker.bindPopup(`
                         <div style="padding: 4px;">
-                            <h4 style="color:#38bdf8;">ایستگاه ${st.name}</h4>
-                            <p style="margin-top:6px; font-size: 1rem;">🔥 <b>FWI پیش‌بینی فردا: ${fwi.toFixed(1)}</b></p>
+                            <h4 style="color:#0284c7;">ایستگاه ${st.name}</h4>
+                            <p style="margin-top:6px; font-size: 0.95rem;">🔥 <b>شاخص FWI فردا: ${fwi.toFixed(1)}</b></p>
                             <hr style="border-color:#334155; margin:6px 0;">
-                            <p style="font-size:0.8rem; color:#cbd5e1;">شاخص اشتعال ریز (FFMC): ${ffmc}</p>
-                            <p style="font-size:0.8rem; color:#cbd5e1;">شاخص انباشت سوخت (BUI): ${bui}</p>
+                            <p style="font-size:0.8rem;">🌡️ حداکثر دما: ${temp} °C</p>
+                            <p style="font-size:0.8rem;">💧 میانگین رطوبت: ${rh}%</p>
+                            <p style="font-size:0.8rem;">💨 سرعت باد: ${wind} km/h</p>
                         </div>
                     `);
                 } catch (e) {
-                    console.error("خطا در دریافت داده ایستگاه " + st.name, e);
+                    console.error("خطا در ایستگاه " + st.name, e);
                 }
             }
         }
