@@ -3,10 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نقشه پهنه‌بندی رستری FWI استان فارس</title>
+    <title>سامانه پهنه‌بندی FWI استان فارس</title>
     
+    <!-- کتابخانه‌های Leaflet و Heatmap -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <!-- فونت وزیر متن -->
     <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" />
 
     <style>
@@ -29,31 +32,40 @@
             background: #ef4444; 
             color: white; 
             padding: 6px 14px; 
-            border-radius: 20px; 
-            font-weight: bold; 
+            bordercss" rel="stylesheet" />
+
+    <style>
+        * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; }
+        body { background-color: #0f172a; color: #f8fafc; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        header { 
+            background: #1e293b; 
+            padding: 12px 20px; 
+            border-bottom: 1px solid #334155; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            z-index: 1000; 
+        }
+        .header-title h1 { font-size: 1.1rem; color: #f97316; }
+        .header-title p { font-size: 0.75rem; color: #94a3b8; }
+        
+        .badge { 
+            background: #ef4444; 
+            color: white; 
+            padding: 6px 14px; 
+            border
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid #38bdf8;
+            color: #38bdf8;
+            padding: 6px 16px;
+            border-radius: 20px;
             font-size: 0.85rem;
-        }
-
-        #map { flex: 1; height: 100%; background: #0f172a; }
-
-        .legend { 
-            position: absolute; 
-            bottom: 20px; 
-            right: 20px; 
-            background: rgba(15,23,42,0.95); 
-            padding: 12px; 
-            border-radius: 8px; 
-            z-index: 999; 
-            font-size: 0.8rem; 
-            border: 1px solid #334155; 
-            color: #fff;
-        }
-        .gradient-bar {
-            height: 12px;
-            width: 100%;
-            background: linear-gradient(to left, #7f1d1d, #ef4444, #f97316, #eab308, #22c55e);
-            border-radius: 4px;
-            margin: 6px 0;
+            z-index: 1000;
         }
     </style>
 </head>
@@ -61,20 +73,21 @@
 
     <header>
         <div class="header-title">
-            <h1>سامانه پهنه‌بندی رستری شاخص FWI استان فارس</h1>
-            <p>درونیابی فضایی پیوسته (Spatial Interpolation) | به‌روزرسانی خودکار روزانه</p>
+            <h1>سامانه پهنه‌بندی آنلاین FWI استان فارس</h1>
+            <p>درونیابی فضایی پیوسته (Heatmap) | محاسبه لحظه‌ای داده‌های پیش‌بینی فردا</p>
         </div>
         <div class="badge">
-            📅 پیش‌بینی FWI فردا
+            📅 پیش‌بینی FWI برای فردا
         </div>
     </header>
 
     <div style="position: relative; flex: 1;">
+        <div id="loading">در حال تحلیل هواشناسی و پهنه‌بندی استان فارس...</div>
         <div id="map"></div>
         <div class="legend">
-            <b>راهنمای شدت خطر FWI</b>
+            <b>راهنمای طیف شدت خطر FWI</b>
             <div class="gradient-bar"></div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.7rem;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.75rem;">
                 <span>کم (۰)</span>
                 <span>متوسط (۱۵)</span>
                 <span>بحرانی (+۳۵)</span>
@@ -83,7 +96,7 @@
     </div>
 
     <script>
-        // ۱. راه‌اندازی نقشه
+        // ۱. ساخت نقشه پایه
         const map = L.map('map').setView([29.3, 53.2], 7);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -91,19 +104,87 @@
             attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
-        // ۲. انداختن تصویر رستری (fwi_map.png) روی مختصات دقیق استان فارس
-        const imageBounds = [
-            [27.0, 50.4], // جنوب غربی [Lat, Lon]
-            [31.6, 55.6]  // شمال شرقی [Lat, Lon]
+        // ۲. ایستگاه‌ها و نقاط کلیدی جهت تولید نقشه حرارتی پیوسته
+        const samplePoints = [
+            { name: "شیراز", lat: 29.6171, lon: 52.5449 },
+            { name: "مرودشت", lat: 29.8742, lon: 52.8094 },
+            { name: "کازرون", lat: 29.6195, lon: 51.6542 },
+            { name: "سپیدان", lat: 30.2608, lon: 51.9847 },
+            { name: "لارستان", lat: 27.6836, lon: 54.3417 },
+            { name: "اقلید", lat: 30.8897, lon: 52.6819 },
+            { name: "جهرم", lat: 28.5003, lon: 53.5604 },
+            { name: "فیروزآباد", lat: 28.8438, lon: 52.5707 },
+            { name: "فسا", lat: 28.9383, lon: 53.6481 },
+            { name: "آباده", lat: 31.1608, lon: 52.6506 },
+            { name: "لامرد", lat: 27.3344, lon: 53.1789 },
+            { name: "داراب", lat: 28.7519, lon: 54.5444 },
+            { name: "نی‌ریز", lat: 29.1985, lon: 54.3278 },
+            { name: "نورآباد ممسنی", lat: 30.1153, lon: 51.5217 },
+            { name: "خرم‌بید", lat: 30.5842, lon: 53.1511 }
         ];
 
-        // لود تصویر با کش‌شکن جهت نمایش آخرین نسخه روزانه
-        const imageUrl = 'fwi_map.png?v=' + new Date().getTime();
+        async function renderHeatmap() {
+            const heatData = [];
+            
+            for (const st of samplePoints) {
+                try {
+                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${st.lat}&longitude=${st.lon}&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum&timezone=Asia%2FTehran&forecast_days=2`;
+                    const res = await fetch(url);
+                    const data = await res.json();
 
-        L.imageOverlay(imageUrl, imageBounds, {
-            opacity: 0.75,
-            interactive: true
-        }).addTo(map);
+                    const temp = data.daily.temperature_2m_max[1];
+                    const rh = data.daily.relative_humidity_2m_mean[1];
+                    const wind = data.daily.wind_speed_10m_max[1];
+                    const rain = data.daily.precipitation_sum[1];
+
+                    // فرمول FWI
+                    let fwi = (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - (rain * 2);
+                    if (fwi < 0) fwi = 0;
+
+                    // اضافه کردن به داده‌های Heatmap با ضریب وزن FWI
+                    const intensity = Math.min(fwi / 35, 1.0);
+                    heatData.push([st.lat, st.lon, intensity]);
+
+                    // مارکر شفاف برای هر شهر
+                    const circle = L.circleMarker([st.lat, st.lon], {
+                        radius: 5,
+                        color: '#000',
+                        fillColor: '#fff',
+                        fillOpacity: 0.8,
+                        weight: 1
+                    }).addTo(map);
+
+                    circle.bindPopup(`
+                        <div style="padding:4px; text-align:right;">
+                            <b style="color:#38bdf8;">${st.name}</b><br>
+                            🔥 FWI فردا: <b>${fwi.toFixed(1)}</b><br>
+                            🌡️ دما: ${temp}°C | 💨 باد: ${wind} km/h
+                        </div>
+                    `);
+                } catch (e) {
+                    console.error("خطا در ایستگاه", st.name);
+                }
+            }
+
+            // رسم لایه درونیابی حرارتی (Heatmap)
+            L.heatLayer(heatData, {
+                radius: 65,
+                blur: 35,
+                maxZoom: 10,
+                max: 1.0,
+                gradient: {
+                    0.1: '#22c55e',
+                    0.3: '#eab308',
+                    0.6: '#f97316',
+                    0.8: '#ef4444',
+                    1.0: '#7f1d1d'
+                }
+            }).addTo(map);
+
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        renderHeatmap();
     </script>
 </body>
 </html>
