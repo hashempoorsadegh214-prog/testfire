@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پیش‌بینی شاخص FWI استان فارس (فردا)</title>
+    
+    <!-- Leaflet MAP CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" />
+
+    <style>
+        * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; }
+        body { background-color: #0f172a; color: #f8fafc; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        header { 
+            background: #1e293b; 
+            padding: 12px 20px; 
+            border-bottom: 1px solid #334155; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            z-index: 1000; 
+        }
+        .header-title h1 { font-size: 1.1rem; color: #f97316; }
+        .header-title p { font-size: 0.75rem; color: #94a3b8; }
+        
+        .badge { 
+            background: #ef4444; 
+            color: white; 
+            padding: 6px 14px; 
+            border-radius: 20px; 
+            font-weight: bold; 
+            font-size: 0.85rem;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+        }
+
+        #map { flex: 1; height: 100%; background: #1e293b; }
+
+        .legend { 
+            position: absolute; 
+            bottom: 20px; 
+            right: 20px; 
+            background: rgba(15,23,42,0.9); 
+            padding: 12px; 
+            border-radius: 8px; 
+            z-index: 999; 
+            font-size: 0.8rem; 
+            border: 1px solid #334155; 
+        }
+        .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-left: 6px; }
+
+        .leaflet-popup-content-wrapper { background: #1e293b; color: white; border-radius: 8px; direction: rtl; }
+        .leaflet-popup-tip { background: #1e293b; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title">
+            <h1>پیش‌بینی شاخص خطر آتش‌سوزی (Fire Weather Index - FWI)</h1>
+            <p>استان فارس | محاسبه داده‌های پیش‌بینی فردا از مدل جوی GFS / Open-Meteo</p>
+        </div>
+        <div class="badge">
+            📅 پیش‌بینی FWI برای فردا: <span id="tomorrow-date">در حال دریافت...</span>
+        </div>
+    </header>
+
+    <div style="position: relative; flex: 1;">
+        <div id="map"></div>
+        <div class="legend">
+            <b>سطوح خطر FWI فردا</b><br>
+            <div><span class="dot" style="background:#22c55e;"></span> کم (کمتر از ۵)</div>
+            <div><span class="dot" style="background:#eab308;"></span> متوسط (۵ تا ۱۵)</div>
+            <div><span class="dot" style="background:#f97316;"></span> زیاد (۱۵ تا ۲۵)</div>
+            <div><span class="dot" style="background:#ef4444;"></span> بسیار زیاد (۲۵ تا ۳۵)</div>
+            <div><span class="dot" style="background:#7f1d1d;"></span> بحرانی (بیشتر از ۳۵)</div>
+        </div>
+    </div>
+
+    <script>
+        // ۱. تنظیم و دریافت تاریخ فردا
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        document.getElementById('tomorrow-date').innerText = tomorrow.toLocaleDateString('fa-IR', {
+            weekday: 'long', month: 'long', day: 'numeric'
+        });
+
+        // ۲. ساخت نقشه مرکزشده روی استان فارس
+        const map = L.map('map').setView([29.3, 53.2], 7);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 18 }).addTo(map);
+
+        // ایستگاه‌های هدف در استان فارس
+        const stations = [
+            { name: "شیراز", lat: 29.6171, lon: 52.5449 },
+            { name: "مرودشت (کامفیروز)", lat: 29.8742, lon: 52.8094 },
+            { name: "کازرون (دشت برمک)", lat: 29.6195, lon: 51.6542 },
+            { name: "سپیدان (زاگرس)", lat: 30.2608, lon: 51.9847 },
+            { name: "لارستان", lat: 27.6836, lon: 54.3417 },
+            { name: "اقلید", lat: 30.8897, lon: 52.6819 },
+            { name: "جهرم", lat: 28.5003, lon: 53.5604 },
+            { name: "فیروزآباد", lat: 28.8438, lon: 52.5707 },
+            { name: "فسا", lat: 28.9383, lon: 53.6481 },
+            { name: "آباده", lat: 31.1608, lon: 52.6506 }
+        ];
+
+        function getColor(fwi) {
+            if (fwi < 5) return '#22c55e';
+            if (fwi < 15) return '#eab308';
+            if (fwi < 25) return '#f97316';
+            if (fwi < 35) return '#ef4444';
+            return '#7f1d1d';
+        }
+
+        // ۳. فراخوانی API و دریافت پیش‌بینی FWI فردا برای هر نقطه
+        async function loadFWIForecast() {
+            for (const st of stations) {
+                try {
+                    const url = `https://fwi-api.open-meteo.com/v1/fwi?latitude=${st.lat}&longitude=${st.lon}&daily=fwi_index,ffmc_index,bui_index&timezone=Asia%2FTehran&forecast_days=2`;
+                    
+                    const res = await fetch(url);
+                    const data = await res.json();
+
+                    // ایندکس 1 دقیقاً پیش‌بینی فردا است
+                    const fwi = data.daily.fwi_index[1] ?? 0;
+                    const ffmc = data.daily.ffmc_index ? data.daily.ffmc_index[1] : '-';
+                    const bui = data.daily.bui_index ? data.daily.bui_index[1] : '-';
+
+                    const color = getColor(fwi);
+
+                    const marker = L.circleMarker([st.lat, st.lon], {
+                        radius: 13,
+                        fillColor: color,
+                        color: '#fff',
+                        weight: 2,
+                        fillOpacity: 0.85
+                    }).addTo(map);
+
+                    marker.bindPopup(`
+                        <div style="padding: 4px;">
+                            <h4 style="color:#38bdf8;">ایستگاه ${st.name}</h4>
+                            <p style="margin-top:6px; font-size: 1rem;">🔥 <b>FWI پیش‌بینی فردا: ${fwi.toFixed(1)}</b></p>
+                            <hr style="border-color:#334155; margin:6px 0;">
+                            <p style="font-size:0.8rem; color:#cbd5e1;">شاخص اشتعال ریز (FFMC): ${ffmc}</p>
+                            <p style="font-size:0.8rem; color:#cbd5e1;">شاخص انباشت سوخت (BUI): ${bui}</p>
+                        </div>
+                    `);
+                } catch (e) {
+                    console.error("خطا در دریافت داده ایستگاه " + st.name, e);
+                }
+            }
+        }
+
+        loadFWIForecast();
+    </script>
+</body>
+</html>
