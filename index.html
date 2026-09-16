@@ -4,11 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>سامانه پهنه‌بندی تفکیکی FWI استان فارس</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<style>
-  * { box-sizing: border-box; }
-  body { margin: 0; padding: 0; font-family: Tahoma, sans-serif; background: #0f172a; color: #fff; overflow: hidden; }
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css0f172a; color: #fff; overflow: hidden; }
   header { height: 60px; padding: 10px 20px; background: #1e293b; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
   header h1 { font-size: 17px; color: #f97316; margin: 0; }
   header p { font-size: 11px; color: #94a3b8; margin: 3px 0 0; }
@@ -35,7 +31,7 @@
   .legend-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-weight: bold; }
   .color-box { width: 18px; height: 12px; border-radius: 3px; display: inline-block; }
 
-  /* استایل پاپ‌آپ شناور روی ماوس */
+  /* استایل پاپ‌آپ متحرک روی ماوس */
   .custom-tooltip {
     background: rgba(15, 23, 42, 0.95) !important;
     border: 1px solid #38bdf8 !important;
@@ -80,14 +76,14 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 18
 }).addTo(map);
 
-// تابع تعیین دقیق رنگ طبق راهنما
+// تابع دقیق تطبیق مقدار FWI با رنگ راهنما
 function getColor(fwi) {
   const val = parseFloat(fwi);
-  return val > 40 ? '#7f1d1d' :
-         val > 30 ? '#ef4444' :
-         val > 20 ? '#f97316' :
-         val > 10 ? '#eab308' :
-                    '#22c55e';
+  if (val > 40) return '#7f1d1d'; // بحرانی
+  if (val > 30) return '#ef4444'; // خیلی بالا
+  if (val > 20) return '#f97316'; // بالا
+  if (val > 10) return '#eab308'; // متوسط
+  return '#22c55e';              // کم
 }
 
 const districtData = new Map();
@@ -121,26 +117,26 @@ async function initMap() {
     const response = await fetch('fars_districts.geojson');
     const geojsonData = await response.json();
 
-    // ترسیم مرزهای ۳۷ شهرستان
+    // ۱. ساخت لایه‌ها و مدیریت هوشمند رویدادهای ماوس
     geojsonLayer = L.geoJSON(geojsonData, {
-      style: {
-        fillColor: '#22c55e',
-        weight: 1.5,
-        opacity: 1,
-        color: '#ffffff',
-        fillOpacity: 0.8
+      style: function(feature) {
+        return {
+          fillColor: feature.properties._color || '#22c55e',
+          weight: 1.5,
+          opacity: 1,
+          color: '#ffffff',
+          fillOpacity: 0.8
+        };
       },
       onEachFeature: function(feature, layer) {
         const dName = feature.properties.Name_sh || feature.properties.مرکز || "نامشخص";
         
-        // پاپ‌آپ اولیه
         layer.bindTooltip(`<b>شهرستان ${dName}</b><br>⌛ در حال دریافت داده...`, {
           sticky: true,
           direction: "top",
           className: "custom-tooltip"
         });
 
-        // افکت برجسته‌سازی هنگام قرارگیری ماوس
         layer.on({
           mouseover: function(e) {
             const l = e.target;
@@ -148,7 +144,14 @@ async function initMap() {
             l.bringToFront();
           },
           mouseout: function(e) {
-            geojsonLayer.resetStyle(e.target);
+            const l = e.target;
+            // بازگشت دقیق به رنگ اصلی FWI شهرستان
+            l.setStyle({
+              weight: 1.5,
+              color: '#ffffff',
+              fillColor: l.feature.properties._color || '#22c55e',
+              fillOpacity: 0.8
+            });
           }
         });
       }
@@ -157,7 +160,7 @@ async function initMap() {
     map.fitBounds(geojsonLayer.getBounds(), { padding: [20, 20] });
     setTimeout(() => { map.invalidateSize(); }, 300);
 
-    // دریافت داده‌های ۳۷ شهرستان
+    // ۲. استعلام داده‌های هواشناسی
     const fetchPromises = geojsonData.features.map(async (feature) => {
       const dName = feature.properties.Name_sh || feature.properties.مرکز || "نامشخص";
       const tempL = L.geoJSON(feature);
@@ -168,23 +171,23 @@ async function initMap() {
 
     await Promise.all(fetchPromises);
 
-    // اعمال رنگ دقیق FWI و تنظیم متن جامع روی پاپ‌آپ متحرک
+    // ۳. تزریق رنگ‌های دقیق طبق FWI محاسباتی به هر شهرستان
     geojsonLayer.eachLayer(function(layer) {
       const feature = layer.feature;
       const data = districtData.get(feature);
       if (data) {
-        const calculatedColor = getColor(data.fwi);
+        const targetColor = getColor(data.fwi);
+        
+        // ذخیره ماندگار رنگ روی feature
+        feature.properties._color = targetColor;
 
-        // رنگ اصلی پلی‌گون بر اساس FWI
+        // اعمال مستقیم روی لایه
         layer.setStyle({
-          fillColor: calculatedColor,
+          fillColor: targetColor,
           fillOpacity: 0.8
         });
 
-        // ذخیره رنگ در لایه برای بازگشت پس از mouseout
-        layer.options.style.fillColor = calculatedColor;
-
-        // پاپ‌آپ شامل تمام اطلاعات
+        // تنظیم متن جامع پاپ‌آپ
         const tooltipContent = `
           <b style="font-size:14px; color:#38bdf8;">شهرستان ${data.name}</b><br>
           🔥 شاخص FWI فردا: <b style="font-size:14px; color:#f97316;">${data.fwi}</b><br>
