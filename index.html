@@ -2,97 +2,78 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>سامانه پهنه‌بندی FWI استان فارس</title>
+<title>FWI استان فارس</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <style>
-  * { box-sizing: border-box; font-family: Tahoma, sans-serif; margin: 0; padding: 0; }
-  body { background: #0f172a; color: #f8fafc; }
-  header { background: #1e293b; padding: 12px 20px; display { box-sizing: border-box; font-family: Tahoma, sans-serif; margin: 0; padding: 0; }
-  body { background: #0f172a; color: #f8fafc; }
-  header { background: #1e293b; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
-  h1 { font-size:  65px); background: #1e293b; }
-  .legend { position: absolute; bottom: 25px; right: 25px; background: rgba(15,23,42,0.9); padding: 12px 16px; border-radius: 10px; z-index: 1000; font-size: 13px; color: #fff; }
-  .bar { height: 10px; width: 200px; margin: 8px 0; border-radius: 5px; background: linear-gradient(to left, #7f1d1d, #ef4444, #f97316, #eab308, #22c55e); }
-  #loading { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); background: #0f172a; border: 1px solid #38bdf8; color: #38bdf8; padding: 8px 18px; border-radius: 20px; z-index: 1000; }
+  body { margin: 0; font-family: Tahoma; background: #0f172a; color: #fff; }
+  header { padding: 10px 20px; background: #1e293b; }
+  header h1 { font-size: 18px; color: #f97316; margin: 0; }
+  header p { font-size: 12px; color: #94a3b8; margin: 4px 0 0; }
+  #map { width: 100%; height: calc(100vh - 70px); background: #1e293b; }
+  #loading { position: absolute; top: 90px; left: 50%; transform: translateX(-50%);
+             background: #0f172a; border: 1px solid #38bdf8; color: #38bdf8;
+             padding: 8px 18px; border-radius: 20px; z-index: 9999; }
+  .legend { position: absolute; bottom: 25px; right: 25px; background: rgba(15,23,42,.9);
+            padding: 12px; border-radius: 10px; font-size: 13px; z-index: 9999; }
+  .bar { height: 10px; width: 200px; margin: 8px 0; border-radius: 5px;
+         background: linear-gradient(to left, #7f1d1d, #ef4444, #f97316, #eab308, #22c55e); }
 </style>
 </head>
 <body>
 <header>
-  <div>
-    <h1>سامانه پهنه‌بندی آنلاین FWI استان فارس</h1>
-    <p style="font-size:12px;color:#94a3b8;">درونیابی فضایی پیوسته (Heatmap) | داده‌های پیش‌بینی فردا</p>
-  </div>
-  <div class="badge">📅 پیش‌بینی FWI برای فردا</div>
+  <h1>سامانه پهنه‌بندی آنلاین FWI استان فارس</h1>
+  <p>Heatmap پیش‌بینی فردا | Open-Meteo</p>
 </header>
 
-<div style="position:relative;">
-  <div id="loading">در حال دریافت داده‌های هواشناسی و پهنه‌بندی...</div>
-  <div id="map"></div>
-  <div class="legend">
-    <b>راهنمای طیف شدت خطر FWI</b>
-    <div class="bar"></div>
-    <div style="display:flex;justify-content:space-between;">
-      <span>کم (۰)</span><span>متوسط (۱۵)</span><span>بحرانی (+۳۵)</span>
-    </div>
-  </div>
+<div id="loading">در حال دریافت داده‌ها...</div>
+<div id="map"></div>
+
+<div class="legend">
+  <b>طیف شدت خطر FWI</b>
+  <div class="bar"></div>
+  <span>کم (۰)</span> — <span>بحرانی (+۳۵)</span>
 </div>
 
 <script>
 const map = L.map('map').setView([29.3, 53.2], 7);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 18, attribution: '&copy; OpenStreetMap'
-}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  { maxZoom: 18, attribution: '&copy; OpenStreetMap' }).addTo(map);
 
 const stations = [
-  { name: "شیراز", lat: 29.6171, lon: 52.5449 },
-  { name: "مرودشت", lat: 29.8742, lon: 52.8094 },
-  { name: "کازرون", lat: 29.6195, lon: 51.6542 },
-  { name: "سپیدان", lat: 30.2608, lon: 51.9847 },
-  { name: "لارستان", lat: 27.6836, lon: 54.3417 },
-  { name: "اقلید", lat: 30.8897, lon: 52.6819 },
-  { name: "جهرم", lat: 28.5003, lon: 53.5604 },
-  { name: "فیروزآباد", lat: 28.8438, lon: 52.5707 },
-  { name: "فسا", lat: 28.9383, lon: 53.6481 },
-  { name: "آباده", lat: 31.1608, lon: 52.6506 },
-  { name: "لامرد", lat: 27.3344, lon: 53.1789 },
-  { name: "داراب", lat: 28.7519, lon: 54.5444 },
-  { name: "نی‌ریز", lat: 29.1985, lon: 54.3278 },
-  { name: "نورآباد ممسنی", lat: 30.1153, lon: 51.5217 },
-  { name: "خرم‌بید", lat: 30.5842, lon: 53.1511 }
+  ["شیراز", 29.62, 52.54], ["مرودشت", 29.87, 52.81], ["کازرون", 29.62, 51.65],
+  ["سپیدان", 30.26, 51.98], ["لارستان", 27.68, 54.34], ["اقلید", 30.89, 52.68],
+  ["جهرم", 28.50, 53.56], ["فیروزآباد", 28.84, 52.57], ["فسا", 28.94, 53.65],
+  ["آباده", 31.16, 52.65], ["لامرد", 27.33, 53.18], ["داراب", 28.75, 54.54],
+  ["نی‌ریز", 29.20, 54.33], ["نورآباد", 30.12, 51.52], ["خرم‌بید", 30.58, 53.15]
 ];
 
-async function renderHeatmap() {
-  const heatData = [];
-  for (const st of stations) {
+async function run() {
+  const heat = [];
+  for (const [name, lat, lon] of stations) {
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${st.lat}&longitude=${st.lon}&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum&timezone=Asia%2FTehran&forecast_days=2`;
-      const res = await fetch(url);
-      const data = await res.json();
-      const temp = data.daily.temperature_2m_max[1];
-      const rh = data.daily.relative_humidity_2m_mean[1];
-      const wind = data.daily.wind_speed_10m_max[1];
-      const rain = data.daily.precipitation_sum[1];
-      let fwi = (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - (rain * 2);
+      const url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat +
+        "&longitude=" + lon +
+        "&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum&timezone=Asia%2FTehran&forecast_days=2";
+      const d = (await (await fetch(url)).json()).daily;
+      const t = d.temperature_2m_max[1], h = d.relative_humidity_2m_mean[1],
+            w = d.wind_speed_10m_max[1], r = d.precipitation_sum[1];
+      let fwi = t * 0.4 + w * 0.3 - h * 0.15 - r * 2;
       if (fwi < 0) fwi = 0;
-      const intensity = Math.min(fwi / 35, 1.0);
-      heatData.push([st.lat, st.lon, intensity]);
-      L.circleMarker([st.lat, st.lon], {
-        radius: 5, color: '#0f172a', fillColor: '#fff', fillOpacity: 0.9, weight: 1.5
-      }).addTo(map).bindPopup(
-        `<b>${st.name}</b><br>🔥 FWI فردا: <b>${fwi.toFixed(1)}</b><br>🌡️ دما: ${temp}°C<br>💧 رطوبت: ${rh}%<br>💨 باد: ${wind} km/h`
-      );
-    } catch (e) { console.error("خطا:", st.name); }
+      heat.push([lat, lon, Math.min(fwi / 35, 1)]);
+      L.circleMarker([lat, lon], { radius: 5, color: '#000', fillColor: '#fff',
+        fillOpacity: .9 }).addTo(map)
+        .bindPopup("<b>" + name + "</b><br>FWI فردا: " + fwi.toFixed(1) +
+                   "<br>دما: " + t + "°C<br>باد: " + w + " km/h");
+    } catch (e) {}
   }
-  L.heatLayer(heatData, {
-    radius: 70, blur: 40, maxZoom: 10, max: 1.0,
-    gradient: { 0.1: '#22c55e', 0.35: '#eab308', 0.6: '#f97316', 0.8: '#ef4444', 1.0: '#7f1d1d' }
-  }).addTo(map);
+  L.heatLayer(heat, { radius: 70, blur: 40, maxZoom: 10,
+    gradient: { 0.1: '#22c55e', 0.35: '#eab308', 0.6: '#f97316',
+                0.8: '#ef4444', 1.0: '#7f1d1d' } }).addTo(map);
   document.getElementById('loading').style.display = 'none';
 }
-renderHeatmap();
+run();
 </script>
 </body>
 </html>
