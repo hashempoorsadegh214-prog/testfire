@@ -37,7 +37,7 @@
             box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
         }
 
-        #map { flex: 1; height: 100%; background: #0f172a; }
+        #map { flex: 1; height: 100%; background: #e5e7eb; }
 
         .legend { 
             position: absolute; 
@@ -49,6 +49,7 @@
             z-index: 999; 
             font-size: 0.8rem; 
             border: 1px solid #334155; 
+            color: #fff;
         }
         .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-left: 6px; }
 
@@ -83,16 +84,16 @@
     <script>
         // ۱. تنظیم تاریخ فردا
         const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        top: tomorrow.setDate(tomorrow.getDate() + 1);
         document.getElementById('tomorrow-date').innerText = tomorrow.toLocaleDateString('fa-IR', {
             weekday: 'long', month: 'long', day: 'numeric'
         });
 
-        // ۲. ساخت نقشه مرکز استان فارس با استفاده از نقشه تیره بدون کلید API
+        // ۲. ساخت نقشه مرکزشده روی استان فارس با OpenStreetMap ۱۰۰٪ رایگان و بدون وابستگی
         const map = L.map('map').setView([29.3, 53.2], 7);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 18,
-            attribution: '&copy; OpenStreetMap'
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
 
         // ایستگاه‌های اصلی استان فارس
@@ -117,7 +118,7 @@
             return '#7f1d1d';
         }
 
-        // ۳. محاسبه FWI با فرمول استاندارد هواشناسی بر اساس پیش‌بینی فردا
+        // ۳. محاسبه و نمایش شاخص FWI فردا
         async function loadFWIForecast() {
             for (const st of stations) {
                 try {
@@ -126,29 +127,29 @@
                     const res = await fetch(url);
                     const data = await res.json();
 
-                    // داده‌های روز فردا (ایندکس 1)
+                    // داده‌های روز فردا
                     const temp = data.daily.temperature_2m_max[1];
                     const rh = data.daily.relative_humidity_2m_mean[1];
                     const wind = data.daily.wind_speed_10m_max[1];
                     const rain = data.daily.precipitation_sum[1];
 
-                    // محاسبه تقریبی FWI عملیاتی
+                    // فرمول محاسبه FWI
                     let fwi = (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - (rain * 2);
                     if (fwi < 0) fwi = 0;
 
                     const color = getColor(fwi);
 
                     const marker = L.circleMarker([st.lat, st.lon], {
-                        radius: 12,
+                        radius: 13,
                         fillColor: color,
-                        color: '#ffffff',
-                        weight: 2,
+                        color: '#000000',
+                        weight: 1.5,
                         fillOpacity: 0.9
                     }).addTo(map);
 
                     marker.bindPopup(`
                         <div style="padding: 4px;">
-                            <h4 style="color:#0284c7;">ایستگاه ${st.name}</h4>
+                            <h4 style="color:#38bdf8;">ایستگاه ${st.name}</h4>
                             <p style="margin-top:6px; font-size: 0.95rem;">🔥 <b>شاخص FWI فردا: ${fwi.toFixed(1)}</b></p>
                             <hr style="border-color:#334155; margin:6px 0;">
                             <p style="font-size:0.8rem;">🌡️ حداکثر دما: ${temp} °C</p>
