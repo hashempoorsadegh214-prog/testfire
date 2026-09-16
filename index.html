@@ -2,34 +2,62 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>سامانه پهنه‌بندی تفکیکی FWI شهرستان‌های استان فارس</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سامانه پهنه‌بندی تفکیکی FWI استان فارس</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-  body { margin: 0; font-family: Tahoma, sans-serif; background: #0f172a; color: #fff; }
-  header { padding: 10px 20px; background: #1e293b; display: flex; justify-content: space-between; align-items: center; }
-  header h1 { font-size: 18px; color: #f97316; margin: 0; }
-  header p { font-size: 12px; color: #94a3b8; margin: 4px 0 0; }
-  #map { width: 100%; height: calc(100vh - 65px); background: #0f172a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0; font-family: Tahoma, sans-serif; background: #0f172a; color: #fff; overflow: hidden; }
+  header { height: 60px; padding: 10px 20px; background: #1e293b; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+  header h1 { font-size: 17px; color: #f97316; margin: 0; }
+  header p { font-size: 11px; color: #94a3b8; margin: 3px 0 0; }
   
-  .info-box { position: absolute; top: 80px; left: 20px; background: rgba(15,23,42,0.95);
-              padding: 14px 18px; border: 1px solid #38bdf8; border-radius: 8px; z-index: 1000; font-size: 13px; line-height: 1.7; min-width: 220px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+  /* رفع باگ تکه‌تکه شدن کاشی‌های نقشه */
+  #map { 
+    width: 100vw; 
+    height: calc(100vh - 60px); 
+    background: #0f172a; 
+    direction: ltr !important; 
+    text-align: left !important;
+  }
   
-  .legend { position: absolute; bottom: 25px; right: 25px; background: rgba(15,23,42,0.95);
-            padding: 12px; border-radius: 10px; font-size: 12px; z-index: 1000; border: 1px solid #334155; }
-  .legend-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+  .info-box { 
+    position: absolute; top: 75px; left: 20px; 
+    background: rgba(15,23,42,0.95); 
+    padding: 14px 18px; border: 1px solid #38bdf8; 
+    border-radius: 8px; z-index: 1000; font-size: 13px; 
+    line-height: 1.8; min-width: 220px; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.6); 
+    direction: rtl; text-align: right;
+  }
+  
+  .legend { 
+    position: absolute; bottom: 25px; right: 25px; 
+    background: rgba(15,23,42,0.95); 
+    padding: 12px 16px; border-radius: 8px; 
+    font-size: 12px; z-index: 1000; 
+    border: 1px solid #334155; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+    direction: rtl; text-align: right;
+  }
+  .legend-title { font-weight: bold; margin-bottom: 6px; color: #e2e8f0; }
+  .legend-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-weight: bold; }
   .color-box { width: 18px; height: 12px; border-radius: 3px; display: inline-block; }
 
-  /* استایل پاپ‌آپ هوشمند */
+  /* پاپ‌آپ نام شهرستان هنگام هاور */
   .custom-tooltip {
-    background: rgba(15, 23, 42, 0.9) !important;
+    background: rgba(15, 23, 42, 0.95) !important;
     border: 1px solid #38bdf8 !important;
     color: #ffffff !important;
-    font-size: 12px !important;
+    font-size: 13px !important;
     font-family: Tahoma, sans-serif !important;
-    padding: 6px 10px !important;
+    font-weight: bold !important;
+    padding: 5px 10px !important;
     border-radius: 6px !important;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5) !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5) !important;
+    direction: rtl !important;
+    text-align: right !important;
   }
 </style>
 </head>
@@ -38,15 +66,15 @@
 <header>
   <div>
     <h1>سامانه پهنه‌بندی تفکیکی FWI استان فارس</h1>
-    <p>تحلیل تفکیکی خطر آتش‌سوزی به تفکیک مرز شهرستان‌ها | پیش‌بینی زنده فردا</p>
+    <p>تحلیل تفکیکی خطر آتش‌سوزی به تفکیک مرز ۳۷ شهرستان | پیش‌بینی زنده فردا</p>
   </div>
 </header>
 
 <div id="map"></div>
-<div id="info" class="info-box">در حال بارگذاری داده‌های شهرستان‌ها...</div>
+<div id="info" class="info-box">در حال بارگذاری نقشه فارس...</div>
 
 <div class="legend">
-  <b>سطوح خطر FWI فردا</b>
+  <div class="legend-title">سطوح خطر FWI فردا</div>
   <div class="legend-item"><span class="color-box" style="background:#22c55e"></span> کم (۰ - ۱۰)</div>
   <div class="legend-item"><span class="color-box" style="background:#eab308"></span> متوسط (۱۰ - ۲۰)</div>
   <div class="legend-item"><span class="color-box" style="background:#f97316"></span> بالا (۲۰ - ۳۰)</div>
@@ -55,11 +83,13 @@
 </div>
 
 <script>
-const map = L.map('map').setView([29.3, 53.2], 7);
+// ایجاد نقشه
+const map = L.map('map', {
+  attributionControl: false
+}).setView([29.3, 53.2], 7);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 18,
-  attribution: '&copy; OpenStreetMap'
+  maxZoom: 18
 }).addTo(map);
 
 function getColor(fwi) {
@@ -70,14 +100,14 @@ function getColor(fwi) {
                     '#22c55e';
 }
 
-const districtResults = new Map();
+const districtData = new Map();
 let geojsonLayer;
 
-async function fetchWeatherData(lat, lng, name) {
+async function fetchWeatherData(lat, lng) {
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(2)}&longitude=${lng.toFixed(2)}&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum&timezone=Asia%2FTehran&forecast_days=2`;
     const res = await fetch(url);
-    if(!res.ok) throw new Error();
+    if (!res.ok) throw new Error();
     const data = await res.json();
     
     const t = data.daily.temperature_2m_max[1];
@@ -96,65 +126,43 @@ async function fetchWeatherData(lat, lng, name) {
   }
 }
 
-async function loadAndProcessMap() {
+async function initMap() {
   try {
     const response = await fetch('fars_districts.geojson');
     const geojsonData = await response.json();
 
-    document.getElementById('info').innerHTML = '⌛ در حال استعلام داده‌ها براساس NAME_SH...';
-
-    for (let i = 0; i < geojsonData.features.length; i++) {
-      const feature = geojsonData.features[i];
-      const props = feature.properties;
-      
-      // اولویت اول خواندن نام فارسی از فیلد NAME_SH
-      const name = props.NAME_SH || props.name || props.NAME_2 || props.NAME_1 || props.nam || `شهرستان ${i+1}`;
-      
-      const tempLayer = L.geoJSON(feature);
-      const center = tempLayer.getBounds().getCenter();
-      
-      const weather = await fetchWeatherData(center.lat, center.lng, name);
-      districtResults.set(i, { name, ...weather });
-    }
-
-    document.getElementById('info').innerHTML = 'نشانگر ماوس را روی هر شهرستان ببرید';
-
+    // ترسیم مرزهای شهرستان‌ها با نام دقیق فارسی از Name_sh
     geojsonLayer = L.geoJSON(geojsonData, {
-      style: function(feature, index) {
-        const data = districtResults.get(index) || { fwi: 12 };
-        return {
-          fillColor: getColor(parseFloat(data.fwi)),
-          weight: 1.5,
-          opacity: 1,
-          color: '#ffffff',
-          fillOpacity: 0.75
-        };
+      style: {
+        fillColor: '#22c55e',
+        weight: 1.5,
+        opacity: 1,
+        color: '#ffffff',
+        fillOpacity: 0.7
       },
       onEachFeature: function(feature, layer) {
-        const index = geojsonData.features.indexOf(feature);
-        const info = districtResults.get(index) || { name: feature.properties.NAME_SH || "نامشخص" };
+        const dName = feature.properties.Name_sh || feature.properties.مرکز || "نامشخص";
         
-        // تنظیم پاپ‌آپ شناور (Popup/Tooltip در هنگام Hover) با نام فیلد NAME_SH
-        layer.bindTooltip(`<b>${info.name}</b>`, {
+        // تنظیم پاپ‌آپ فقط با نام شهرستان
+        layer.bindTooltip(`شهرستان ${dName}`, {
           sticky: true,
-          direction: "auto",
+          direction: "top",
           className: "custom-tooltip"
         });
 
         layer.on({
           mouseover: function(e) {
             const l = e.target;
-            l.setStyle({ weight: 3, color: '#ffffff', fillOpacity: 0.95 });
+            l.setStyle({ weight: 3, color: '#38bdf8', fillOpacity: 0.95 });
             l.bringToFront();
 
-            const curInfo = districtResults.get(index) || { name: info.name, fwi: "-", temp: "-", wind: "-", humidity: "-" };
-            
+            const info = districtData.get(feature) || { name: dName, fwi: "در حال محاسبه...", temp: "-", humidity: "-", wind: "-" };
             document.getElementById('info').innerHTML = `
-              <b style="font-size:15px; color:#38bdf8;">${curInfo.name}</b><br>
-              🔥 شاخص FWI فردا: <b style="font-size:14px; color:#f97316;">${curInfo.fwi}</b><br>
-              🌡️ حداکثر دما: ${curInfo.temp} °C<br>
-              💧 رطوبت نسبی: ${curInfo.humidity} %<br>
-              💨 سرعت باد: ${curInfo.wind} km/h
+              <b style="font-size:16px; color:#38bdf8;">شهرستان ${info.name}</b><br>
+              🔥 شاخص FWI فردا: <b style="font-size:15px; color:#f97316;">${info.fwi}</b><br>
+              🌡️ بیشینه دما: ${info.temp} °C<br>
+              💧 رطوبت نسبی: ${info.humidity} %<br>
+              💨 سرعت باد: ${info.wind} km/h
             `;
           },
           mouseout: function(e) {
@@ -165,12 +173,43 @@ async function loadAndProcessMap() {
       }
     }).addTo(map);
 
+    // زوم و مرکزیت خودکار و دقیق روی محدوده استان فارس
+    map.fitBounds(geojsonLayer.getBounds(), { padding: [20, 20] });
+    setTimeout(() => { map.invalidateSize(); }, 300);
+
+    document.getElementById('info').innerHTML = '⌛ در حال استعلام داده‌های هواشناسی شهرستان‌ها...';
+
+    // دریافت داده‌های هواشناسی
+    const fetchPromises = geojsonData.features.map(async (feature) => {
+      const dName = feature.properties.Name_sh || feature.properties.مرکز || "نامشخص";
+      const tempL = L.geoJSON(feature);
+      const center = tempL.getBounds().getCenter();
+      const weather = await fetchWeatherData(center.lat, center.lng);
+      districtData.set(feature, { name: dName, ...weather });
+    });
+
+    await Promise.all(fetchPromises);
+
+    // رنگ‌آمیزی نقشه بر اساس شاخص FWI
+    geojsonLayer.eachLayer(function(layer) {
+      const feature = layer.feature;
+      const data = districtData.get(feature);
+      if (data) {
+        layer.setStyle({
+          fillColor: getColor(parseFloat(data.fwi)),
+          fillOpacity: 0.75
+        });
+      }
+    });
+
+    document.getElementById('info').innerHTML = 'نشانگر ماوس را روی هر شهرستان ببرید';
+
   } catch (err) {
-    document.getElementById('info').innerHTML = '❌ خطا در بارگذاری فایل fars_districts.geojson';
+    document.getElementById('info').innerHTML = '❌ خطا در بارگذاری لایه استان فارس';
   }
 }
 
-loadAndProcessMap();
+initMap();
 </script>
 </body>
 </html>
