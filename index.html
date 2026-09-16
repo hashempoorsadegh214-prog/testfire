@@ -20,21 +20,16 @@
   .legend-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
   .color-box { width: 18px; height: 12px; border-radius: 3px; display: inline-block; }
 
-  /* استایل اختصاصی برای نام شهرستان روی نقشه */
-  .district-label {
-    background: rgba(15, 23, 42, 0.75) !important;
-    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  /* استایل پاپ‌آپ هوشمند */
+  .custom-tooltip {
+    background: rgba(15, 23, 42, 0.9) !important;
+    border: 1px solid #38bdf8 !important;
     color: #ffffff !important;
-    font-size: 11px !important;
-    font-weight: bold !important;
-    padding: 2px 6px !important;
-    border-radius: 4px !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.4) !important;
-    text-align: center;
-    white-space: nowrap;
-  }
-  .leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before, .leaflet-tooltip-left:before, .leaflet-tooltip-right:before {
-    display: none !important; /* حذف پیکان تولتیپ برای تمیزی نقشه */
+    font-size: 12px !important;
+    font-family: Tahoma, sans-serif !important;
+    padding: 6px 10px !important;
+    border-radius: 6px !important;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5) !important;
   }
 </style>
 </head>
@@ -42,13 +37,13 @@
 
 <header>
   <div>
-    <h1>سامانه پهنه‌بندی تفکیکی FWI (Choropleth) استان فارس</h1>
+    <h1>سامانه پهنه‌بندی تفکیکی FWI استان فارس</h1>
     <p>تحلیل تفکیکی خطر آتش‌سوزی به تفکیک مرز شهرستان‌ها | پیش‌بینی زنده فردا</p>
   </div>
 </header>
 
 <div id="map"></div>
-<div id="info" class="info-box">در حال محاسبه و آماده‌سازی نقشه...</div>
+<div id="info" class="info-box">در حال بارگذاری داده‌های شهرستان‌ها...</div>
 
 <div class="legend">
   <b>سطوح خطر FWI فردا</b>
@@ -106,12 +101,14 @@ async function loadAndProcessMap() {
     const response = await fetch('fars_districts.geojson');
     const geojsonData = await response.json();
 
-    document.getElementById('info').innerHTML = '⌛ در حال دریافت اطلاعات هواشناسی و درج نام شهرستان‌ها...';
+    document.getElementById('info').innerHTML = '⌛ در حال استعلام داده‌ها براساس NAME_SH...';
 
     for (let i = 0; i < geojsonData.features.length; i++) {
       const feature = geojsonData.features[i];
       const props = feature.properties;
-      const name = props.name || props.NAME_2 || props.NAME_1 || props.nam || `شهرستان ${i+1}`;
+      
+      // اولویت اول خواندن نام فارسی از فیلد NAME_SH
+      const name = props.NAME_SH || props.name || props.NAME_2 || props.NAME_1 || props.nam || `شهرستان ${i+1}`;
       
       const tempLayer = L.geoJSON(feature);
       const center = tempLayer.getBounds().getCenter();
@@ -120,7 +117,7 @@ async function loadAndProcessMap() {
       districtResults.set(i, { name, ...weather });
     }
 
-    document.getElementById('info').innerHTML = 'برای مشاهده اطلاعات، نشانگر را روی شهرستان ببرید';
+    document.getElementById('info').innerHTML = 'نشانگر ماوس را روی هر شهرستان ببرید';
 
     geojsonLayer = L.geoJSON(geojsonData, {
       style: function(feature, index) {
@@ -135,13 +132,13 @@ async function loadAndProcessMap() {
       },
       onEachFeature: function(feature, layer) {
         const index = geojsonData.features.indexOf(feature);
-        const info = districtResults.get(index) || { name: "نامشخص" };
+        const info = districtResults.get(index) || { name: feature.properties.NAME_SH || "نامشخص" };
         
-        // **افزودن نام شهرستان به صورت دائمی روی مرکز هر پلی‌گون**
-        layer.bindTooltip(info.name, {
-          permanent: true,
-          direction: "center",
-          className: "district-label"
+        // تنظیم پاپ‌آپ شناور (Popup/Tooltip در هنگام Hover) با نام فیلد NAME_SH
+        layer.bindTooltip(`<b>${info.name}</b>`, {
+          sticky: true,
+          direction: "auto",
+          className: "custom-tooltip"
         });
 
         layer.on({
@@ -150,7 +147,7 @@ async function loadAndProcessMap() {
             l.setStyle({ weight: 3, color: '#ffffff', fillOpacity: 0.95 });
             l.bringToFront();
 
-            const curInfo = districtResults.get(index) || { name: "نامشخص", fwi: "-", temp: "-", wind: "-", humidity: "-" };
+            const curInfo = districtResults.get(index) || { name: info.name, fwi: "-", temp: "-", wind: "-", humidity: "-" };
             
             document.getElementById('info').innerHTML = `
               <b style="font-size:15px; color:#38bdf8;">${curInfo.name}</b><br>
@@ -162,7 +159,7 @@ async function loadAndProcessMap() {
           },
           mouseout: function(e) {
             geojsonLayer.resetStyle(e.target);
-            document.getElementById('info').innerHTML = 'برای مشاهده اطلاعات، نشانگر را روی شهرستان ببرید';
+            document.getElementById('info').innerHTML = 'نشانگر ماوس را روی هر شهرستان ببرید';
           }
         });
       }
