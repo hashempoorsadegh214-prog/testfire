@@ -9,21 +9,35 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    
     <!-- فونت وزیر متن -->
-    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" />
-
-    <style>
-        * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; }
-        body { background-color: #0f172a; color: #f8fafc; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    <link href="https://cdn p { font-size: 0.75rem; color: #94a3b8; }
         
-        header { 
-            background: #1e293b; 
+        .badge { 
+            background: #ef4444; 
+            color: white; 
+            padding: 6px 14px; 
+            border-radius: 20px; 
+            font-size: 0.8rem; 
+            font-weight: bold; 
+        }
+
+        #map-container {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            height: calc(100vh - 60px);
+        }
+
+        #map {
+            width: 100: #1e293b; 
             padding: 12px 20px; 
             border-bottom: 1px solid #334155; 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
             z-index: 1000; 
+            height: 60px;
         }
         .header-title h1 { font-size: 1.1rem; color: #f97316; }
         .header-title p { font-size: 0.75rem; color: #94a3b8; }
@@ -32,40 +46,60 @@
             background: #ef4444; 
             color: white; 
             padding: 6px 14px; 
-            bordercss" rel="stylesheet" />
-
-    <style>
-        * { box-sizing: border-box; font-family: 'Vazirmatn', sans-serif; margin: 0; padding: 0; }
-        body { background-color: #0f172a; color: #f8fafc; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        
-        header { 
-            background: #1e293b; 
-            padding: 12px 20px; 
-            border-bottom: 1px solid #334155; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            z-index: 1000; 
+            border-radius: 20px; 
+            font-size: 0.8rem; 
+            font-weight: bold; 
         }
-        .header-title h1 { font-size: 1.1rem; color: #f97316; }
-        .header-title p { font-size: 0.75rem; color: #94a3b8; }
-        
-        .badge { 
-            background: #ef4444; 
-            color: white; 
-            padding: 6px 14px; 
-            border
+
+        #map-container {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            height: calc(100vh - 60px);
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background-color: #1e293b;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid #334155;
+            padding: 12px 16px;
+            border-radius: 10px;
+            z-index: 1000;
+            color: white;
+            font-size: 0.8rem;
+            min-width: 220px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .gradient-bar {
+            height: 10px;
+            width: 100%;
+            border-radius: 5px;
+            margin: 8px 0;
+            background: linear-gradient(to left, #7f1d1d, #ef4444, #f97316, #eab308, #22c55e);
+        }
+
+        #loading {
             position: absolute;
             top: 15px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(15, 23, 42, 0.9);
+            background: rgba(15, 23, 42, 0.95);
             border: 1px solid #38bdf8;
             color: #38bdf8;
-            padding: 6px 16px;
+            padding: 8px 18px;
             border-radius: 20px;
             font-size: 0.85rem;
             z-index: 1000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
     </style>
 </head>
@@ -81,8 +115,8 @@
         </div>
     </header>
 
-    <div style="position: relative; flex: 1;">
-        <div id="loading">در حال تحلیل هواشناسی و پهنه‌بندی استان فارس...</div>
+    <div id="map-container">
+        <div id="loading">در حال دریافت داده‌های هواشناسی و رسم پهنه‌بندی استان فارس...</div>
         <div id="map"></div>
         <div class="legend">
             <b>راهنمای طیف شدت خطر FWI</b>
@@ -96,7 +130,7 @@
     </div>
 
     <script>
-        // ۱. ساخت نقشه پایه
+        // ۱. مقداردهی اولیه نقشه
         const map = L.map('map').setView([29.3, 53.2], 7);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -104,7 +138,7 @@
             attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
-        // ۲. ایستگاه‌ها و نقاط کلیدی جهت تولید نقشه حرارتی پیوسته
+        // ۲. ایستگاه‌های پوشش‌دهنده استان فارس
         const samplePoints = [
             { name: "شیراز", lat: 29.6171, lon: 52.5449 },
             { name: "مرودشت", lat: 29.8742, lon: 52.8094 },
@@ -137,51 +171,53 @@
                     const wind = data.daily.wind_speed_10m_max[1];
                     const rain = data.daily.precipitation_sum[1];
 
-                    // فرمول FWI
+                    // محاسبه فرمول FWI
                     let fwi = (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - (rain * 2);
                     if (fwi < 0) fwi = 0;
 
-                    // اضافه کردن به داده‌های Heatmap با ضریب وزن FWI
                     const intensity = Math.min(fwi / 35, 1.0);
                     heatData.push([st.lat, st.lon, intensity]);
 
-                    // مارکر شفاف برای هر شهر
+                    // علامت ایستگاه
                     const circle = L.circleMarker([st.lat, st.lon], {
                         radius: 5,
-                        color: '#000',
-                        fillColor: '#fff',
-                        fillOpacity: 0.8,
-                        weight: 1
+                        color: '#0f172a',
+                        fillColor: '#ffffff',
+                        fillOpacity: 0.9,
+                        weight: 1.5
                     }).addTo(map);
 
                     circle.bindPopup(`
                         <div style="padding:4px; text-align:right;">
-                            <b style="color:#38bdf8;">${st.name}</b><br>
+                            <b style="color:#0284c7;">ایستگاه ${st.name}</b><br>
                             🔥 FWI فردا: <b>${fwi.toFixed(1)}</b><br>
-                            🌡️ دما: ${temp}°C | 💨 باد: ${wind} km/h
+                            🌡️ حداکثر دما: ${temp}°C<br>
+                            💧 میانگین رطوبت: ${rh}%<br>
+                            💨 سرعت باد: ${wind} km/h
                         </div>
                     `);
                 } catch (e) {
-                    console.error("خطا در ایستگاه", st.name);
+                    console.error("خطا در دریافت داده برای", st.name);
                 }
             }
 
-            // رسم لایه درونیابی حرارتی (Heatmap)
+            // لایه درونیابی حرارتی
             L.heatLayer(heatData, {
-                radius: 65,
-                blur: 35,
+                radius: 70,
+                blur: 40,
                 maxZoom: 10,
                 max: 1.0,
                 gradient: {
                     0.1: '#22c55e',
-                    0.3: '#eab308',
+                    0.35: '#eab308',
                     0.6: '#f97316',
                     0.8: '#ef4444',
                     1.0: '#7f1d1d'
                 }
             }).addTo(map);
 
-            document.getElementById('loading').style.display = 'none';
+            const loadEl = document.getElementById('loading');
+            if (loadEl) loadEl.style.display = 'none';
         }
 
         renderHeatmap();
