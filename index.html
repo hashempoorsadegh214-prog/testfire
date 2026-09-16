@@ -3,76 +3,232 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>سامانه پهنه‌بندی تفکیکی FWI استان فارس</title>
+<title>سامانه پهنه‌بندی و پیش‌بینی خطر آتش‌سوزی استان فارس</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
+  /* تعریف فونت‌های B Titr و B Nazanin با پشتیبانی استاندارد */
+  @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap');
+
   * { box-sizing: border-box; }
+  
   body {
     margin: 0;
     padding: 0;
-    font-family: Tahoma, sans-serif;
+    font-family: 'B Nazanin', 'Vazirmatn', Tahoma, sans-serif;
     background: #0f172a;
     color: #fff;
     overflow: hidden;
   }
+
+  /* هدر قرمز هشدار */
   header {
-    height: 60px;
-    padding: 10px 20px;
-    background: #1e293b;
-    display: flex;
-    justify-content: space-between;
+    height: 75px;
+    padding: 0 20px;
+    background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 50%, #991b1b 100%);
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    border-bottom: 1px solid #334155;
+    border-bottom: 2px solid #ef4444;
+    box-shadow: 0 4px 20px rgba(127, 29, 29, 0.6);
+    position: relative;
+    z-index: 1100;
   }
-  header h1 { font-size: 17px; color: #f97316; margin: 0; }
-  header p { font-size: 11px; color: #94a3b8; margin: 3px 0 0; }
+
+  /* تابلوی آلارم سمت راست */
+  .alarm-container {
+    justify-self: start;
+    display: flex;
+    align-items: center;
+  }
+
+  .forecast-alarm-box {
+    direction: rtl;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 14px;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid #10b981;
+    border-radius: 8px;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+  }
+
+  /* LED سبز چشمک‌زن */
+  .led-green {
+    width: 13px;
+    height: 13px;
+    background-color: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #10b981, 0 0 20px #10b981;
+    animation: ledPulse 1.2s infinite ease-in-out;
+    flex-shrink: 0;
+  }
+
+  @keyframes ledPulse {
+    0% { opacity: 0.2; transform: scale(0.85); }
+    50% { opacity: 1; transform: scale(1.15); box-shadow: 0 0 14px #10b981, 0 0 25px #34d399; }
+    100% { opacity: 0.2; transform: scale(0.85); }
+  }
+
+  .alarm-details {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .alarm-title {
+    font-family: 'B Titr', 'Vazirmatn', sans-serif;
+    font-weight: bold;
+    font-size: 13px;
+    color: #34d399;
+  }
+
+  .alarm-date {
+    font-family: 'B Nazanin', 'Vazirmatn', sans-serif;
+    font-size: 13px;
+    font-weight: bold;
+    color: #f8fafc;
+  }
+
+  /* عنوان دقیقاً در وسط */
+  .header-center {
+    justify-self: center;
+    text-align: center;
+  }
+
+  header h1 {
+    font-family: 'B Titr', 'Vazirmatn', sans-serif;
+    font-size: 20px;
+    color: #ffffff;
+    margin: 0;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+    letter-spacing: 0.5px;
+  }
+
+  header p {
+    font-family: 'B Nazanin', 'Vazirmatn', sans-serif;
+    font-size: 13px;
+    font-weight: bold;
+    color: #fca5a5;
+    margin: 3px 0 0;
+  }
+
+  .header-spacer {
+    justify-self: end;
+  }
+
+  /* کانتینر نقشه */
   #map {
     width: 100vw;
-    height: calc(100vh - 60px);
+    height: calc(100vh - 75px);
     background: #0f172a;
     direction: ltr !important;
     text-align: left !important;
   }
+
+  /* راهنمای نقشه */
   .legend {
     position: absolute;
     bottom: 25px;
     right: 25px;
-    background: rgba(15,23,42,0.95);
+    background: rgba(15, 23, 42, 0.95);
     padding: 12px 16px;
     border-radius: 8px;
-    font-size: 12px;
     z-index: 1000;
     border: 1px solid #334155;
     box-shadow: 0 4px 15px rgba(0,0,0,0.6);
     direction: rtl;
     text-align: right;
   }
-  .legend-title { font-weight: bold; margin-bottom: 6px; color: #e2e8f0; }
-  .legend-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-weight: bold; }
-  .color-box { width: 18px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  .legend-title {
+    font-family: 'B Titr', 'Vazirmatn', sans-serif;
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #f8fafc;
+  }
+
+  .legend-item {
+    font-family: 'B Nazanin', 'Vazirmatn', sans-serif;
+    font-size: 14px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0;
+  }
+
+  .color-box {
+    width: 18px;
+    height: 12px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+
+  /* استایل پاپ‌آپ متحرک */
   .custom-tooltip {
     background: rgba(15, 23, 42, 0.95) !important;
     border: 1px solid #38bdf8 !important;
     color: #ffffff !important;
-    font-size: 12px !important;
-    font-family: Tahoma, sans-serif !important;
-    padding: 8px 12px !important;
+    font-family: 'B Nazanin', 'Vazirmatn', sans-serif !important;
+    font-size: 14px !important;
+    padding: 10px 14px !important;
     border-radius: 8px !important;
     box-shadow: 0 4px 20px rgba(0,0,0,0.7) !important;
     direction: rtl !important;
     text-align: right !important;
-    line-height: 1.8 !important;
+    line-height: 1.9 !important;
+  }
+
+  .tooltip-header {
+    font-family: 'B Titr', 'Vazirmatn', sans-serif !important;
+    font-size: 15px !important;
+    color: #38bdf8 !important;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+  }
+
+  /* پاسخگویی هوشمند در موبایل */
+  @media (max-width: 850px) {
+    header {
+      height: auto;
+      padding: 10px;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .alarm-container, .header-center, .header-spacer {
+      justify-self: center;
+    }
+    #map {
+      height: calc(100vh - 120px);
+    }
   }
 </style>
 </head>
 <body>
 
 <header>
-  <div>
-    <h1>سامانه پهنه‌بندی تفکیکی FWI استان فارس</h1>
-    <p>تحلیل تفکیکی خطر آتش‌سوزی به تفکیک مرز ۳۷ شهرستان | پیش‌بینی زنده فردا</p>
+  <!-- سمت راست: تابلوی آلارم با LED سبز -->
+  <div class="alarm-container">
+    <div class="forecast-alarm-box">
+      <div class="led-green"></div>
+      <div class="alarm-details">
+        <span class="alarm-title">پیش‌بینی خطر حریق برای فردا:</span>
+        <span id="tomorrow-persian-date" class="alarm-date">در حال محاسبه تاریخ...</span>
+      </div>
+    </div>
   </div>
+
+  <!-- وسط: عنوان و زیرعنوان -->
+  <div class="header-center">
+    <h1>سامانه پهنه‌بندی و پیش‌بینی خطر آتش‌سوزی استان فارس</h1>
+    <p>تحلیل تفکیکی خطر حریق بر اساس شاخص هواشناسی آتش‌سوزی FWI</p>
+  </div>
+
+  <!-- سمت چپ: جهت حفظ تقارن عنوان در وسط -->
+  <div class="header-spacer"></div>
 </header>
 
 <div id="map"></div>
@@ -87,6 +243,46 @@
 </div>
 
 <script>
+// ۱. محاسبه خودکار تاریخ فردا به شمسی
+function updateTomorrowPersianDate() {
+  const dateElement = document.getElementById('tomorrow-persian-date');
+  if (!dateElement) return;
+
+  try {
+    const iranDateParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Tehran',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric'
+    }).formatToParts(new Date());
+
+    const dateValues = {};
+    iranDateParts.forEach(function(part) {
+      if (part.type !== 'literal') {
+        dateValues[part.type] = Number(part.value);
+      }
+    });
+
+    const tomorrow = new Date(Date.UTC(dateValues.year, dateValues.month - 1, dateValues.day + 1, 12, 0, 0));
+
+    const persianDate = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      timeZone: 'Asia/Tehran'
+    }).format(tomorrow);
+
+    dateElement.textContent = persianDate;
+  } catch (error) {
+    console.error('خطا در محاسبه تاریخ شمسی فردا:', error);
+    dateElement.textContent = 'فردا';
+  }
+}
+
+updateTomorrowPersianDate();
+
+// ۲. راه‌اندازی نقشه
 const map = L.map('map', { attributionControl: false }).setView([29.3, 53.2], 7);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
@@ -141,7 +337,7 @@ async function initMap() {
       onEachFeature: function(feature, layer) {
         const dName = (feature.properties && (feature.properties.Name_sh || feature.properties.Name || feature.properties.name)) || 'نامشخص';
 
-        layer.bindTooltip('<b>شهرستان ' + dName + '</b><br>⌛ در حال دریافت داده...', {
+        layer.bindTooltip('<div class="tooltip-header">شهرستان ' + dName + '</div>⌛ در حال دریافت داده...', {
           sticky: true,
           direction: 'top',
           className: 'custom-tooltip'
@@ -182,8 +378,8 @@ async function initMap() {
         layer.setStyle({ fillColor: targetColor, fillOpacity: 0.8 });
 
         layer.setTooltipContent(
-          '<b style="font-size:14px; color:#38bdf8;">شهرستان ' + data.name + '</b><br>' +
-          '🔥 شاخص FWI فردا: <b style="font-size:14px; color:#f97316;">' + data.fwi + '</b><br>' +
+          '<div class="tooltip-header">شهرستان ' + data.name + '</div>' +
+          '🔥 شاخص FWI فردا: <b style="font-size:15px; color:#f97316;">' + data.fwi + '</b><br>' +
           '🌡️ بیشینه دما: <b>' + data.temp + ' °C</b><br>' +
           '💧 رطوبت نسبی: <b>' + data.humidity + ' %</b><br>' +
           '💨 سرعت باد: <b>' + data.wind + ' km/h</b>'
