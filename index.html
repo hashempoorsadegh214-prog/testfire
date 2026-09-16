@@ -7,7 +7,6 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-  /* تعریف فونت‌های B Titr و B Nazanin با پشتیبانی استاندارد */
   @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap');
 
   * { box-sizing: border-box; }
@@ -190,7 +189,6 @@
     margin-bottom: 6px;
   }
 
-  /* پاسخگویی هوشمند در موبایل */
   @media (max-width: 850px) {
     header {
       height: auto;
@@ -210,7 +208,6 @@
 <body>
 
 <header>
-  <!-- سمت راست: تابلوی آلارم با LED سبز -->
   <div class="alarm-container">
     <div class="forecast-alarm-box">
       <div class="led-green"></div>
@@ -221,13 +218,11 @@
     </div>
   </div>
 
-  <!-- وسط: عنوان و زیرعنوان -->
   <div class="header-center">
     <h1>سامانه پهنه‌بندی و پیش‌بینی خطر آتش‌سوزی استان فارس</h1>
     <p>تحلیل تفکیکی خطر حریق بر اساس شاخص هواشناسی آتش‌سوزی FWI</p>
   </div>
 
-  <!-- سمت چپ: جهت حفظ تقارن عنوان در وسط -->
   <div class="header-spacer"></div>
 </header>
 
@@ -243,7 +238,6 @@
 </div>
 
 <script>
-// ۱. محاسبه خودکار تاریخ فردا به شمسی
 function updateTomorrowPersianDate() {
   const dateElement = document.getElementById('tomorrow-persian-date');
   if (!dateElement) return;
@@ -282,7 +276,6 @@ function updateTomorrowPersianDate() {
 
 updateTomorrowPersianDate();
 
-// ۲. راه‌اندازی نقشه
 const map = L.map('map', { attributionControl: false }).setView([29.3, 53.2], 7);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
@@ -294,6 +287,15 @@ function getColor(fwi) {
   if (val > 20) return '#f97316';
   if (val > 10) return '#eab308';
   return '#22c55e';
+}
+
+function getRiskLevel(fwi) {
+  const val = parseFloat(fwi);
+  if (val > 40) return { text: 'بحرانی', color: '#ef4444' };
+  if (val > 30) return { text: 'خیلی بالا', color: '#f97316' };
+  if (val > 20) return { text: 'بالا', color: '#f59e0b' };
+  if (val > 10) return { text: 'متوسط', color: '#eab308' };
+  return { text: 'کم', color: '#22c55e' };
 }
 
 const districtData = new Map();
@@ -374,12 +376,14 @@ async function initMap() {
       const data = districtData.get(feature);
       if (data) {
         const targetColor = getColor(data.fwi);
+        const risk = getRiskLevel(data.fwi);
         feature.properties._color = targetColor;
         layer.setStyle({ fillColor: targetColor, fillOpacity: 0.8 });
 
         layer.setTooltipContent(
           '<div class="tooltip-header">شهرستان ' + data.name + '</div>' +
           '🔥 شاخص FWI فردا: <b style="font-size:15px; color:#f97316;">' + data.fwi + '</b><br>' +
+          '🛡️ کلاس خطر: <b style="color:' + risk.color + ';">' + risk.text + '</b><br>' +
           '🌡️ بیشینه دما: <b>' + data.temp + ' °C</b><br>' +
           '💧 رطوبت نسبی: <b>' + data.humidity + ' %</b><br>' +
           '💨 سرعت باد: <b>' + data.wind + ' km/h</b>'
