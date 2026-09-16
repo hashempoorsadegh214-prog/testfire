@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>پیش‌بینی شاخص FWI استان فارس (فردا)</title>
+    <title>پهنه‌بندی شاخص FWI استان فارس (فردا)</title>
     
     <!-- کتابخانه نقشه Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -37,7 +37,7 @@
             box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
         }
 
-        #map { flex: 1; height: 100%; background: #e5e7eb; }
+        #map { flex: 1; height: 100%; background: #0f172a; }
 
         .legend { 
             position: absolute; 
@@ -51,18 +51,32 @@
             border: 1px solid #334155; 
             color: #fff;
         }
-        .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-left: 6px; }
+        .dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-left: 6px; }
 
         .leaflet-popup-content-wrapper { background: #1e293b; color: white; border-radius: 8px; direction: rtl; }
         .leaflet-popup-tip { background: #1e293b; }
+
+        #loading-progress {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid #38bdf8;
+            color: #38bdf8;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
 
     <header>
         <div class="header-title">
-            <h1>پیش‌بینی شاخص خطر آتش‌سوزی (Fire Weather Index - FWI)</h1>
-            <p>استان فارس | محاسبه آنلاین داده‌های پیش‌بینی فردا از Open-Meteo</p>
+            <h1>سامانه پهنه‌بندی شاخص خطر آتش‌سوزی (FWI) استان فارس</h1>
+            <p>پوشش کامل مساحتی استان | شبکه ۱۵ کیلومتری | داده‌های پیش‌بینی فردا (Open-Meteo)</p>
         </div>
         <div class="badge">
             📅 پیش‌بینی FWI برای فردا: <span id="tomorrow-date">در حال دریافت...</span>
@@ -70,10 +84,11 @@
     </header>
 
     <div style="position: relative; flex: 1;">
+        <div id="loading-progress">در حال محاسبه و پردازش سلول‌های شبکه‌ای استان فارس...</div>
         <div id="map"></div>
         <div class="legend">
-            <b>سطوح خطر FWI فردا</b><br>
-            <div><span class="dot" style="background:#22c55e;"></span> کم (کمتر از ۵)</div>
+            <b>سطوح خطر FWI (پهنه‌ای)</b><br>
+            <div><span class="dot" style="background:#22c55e;"></span> بسیار کم (کمتر از ۵)</div>
             <div><span class="dot" style="background:#eab308;"></span> متوسط (۵ تا ۱۵)</div>
             <div><span class="dot" style="background:#f97316;"></span> زیاد (۱۵ تا ۲۵)</div>
             <div><span class="dot" style="background:#ef4444;"></span> بسیار زیاد (۲۵ تا ۳۵)</div>
@@ -84,32 +99,19 @@
     <script>
         // ۱. تنظیم تاریخ فردا
         const tomorrow = new Date();
-        top: tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setDate(tomorrow.getDate() + 1);
         document.getElementById('tomorrow-date').innerText = tomorrow.toLocaleDateString('fa-IR', {
             weekday: 'long', month: 'long', day: 'numeric'
         });
 
-        // ۲. ساخت نقشه مرکزشده روی استان فارس با OpenStreetMap ۱۰۰٪ رایگان و بدون وابستگی
+        // ۲. راه‌اندازی نقشه مرکزشده روی استان فارس
         const map = L.map('map').setView([29.3, 53.2], 7);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 18,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
 
-        // ایستگاه‌های اصلی استان فارس
-        const stations = [
-            { name: "شیراز", lat: 29.6171, lon: 52.5449 },
-            { name: "مرودشت (کامفیروز)", lat: 29.8742, lon: 52.8094 },
-            { name: "کازرون (دشت برمک)", lat: 29.6195, lon: 51.6542 },
-            { name: "سپیدان (زاگرس)", lat: 30.2608, lon: 51.9847 },
-            { name: "لارستان", lat: 27.6836, lon: 54.3417 },
-            { name: "اقلید", lat: 30.8897, lon: 52.6819 },
-            { name: "جهرم", lat: 28.5003, lon: 53.5604 },
-            { name: "فیروزآباد", lat: 28.8438, lon: 52.5707 },
-            { name: "فسا", lat: 28.9383, lon: 53.6481 },
-            { name: "آباده", lat: 31.1608, lon: 52.6506 }
-        ];
-
+        // رنگ‌بندی بر اساس FWI
         function getColor(fwi) {
             if (fwi < 5) return '#22c55e';
             if (fwi < 15) return '#eab308';
@@ -118,52 +120,83 @@
             return '#7f1d1d';
         }
 
-        // ۳. محاسبه و نمایش شاخص FWI فردا
-        async function loadFWIForecast() {
-            for (const st of stations) {
-                try {
-                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${st.lat}&longitude=${st.lon}&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum&timezone=Asia%2FTehran&forecast_days=2`;
-                    
-                    const res = await fetch(url);
-                    const data = await res.json();
+        // ۳. ساخت شبکه سلولی (Grid Mesh) روی محدوده استان فارس
+        // گام جغرافیایی 0.18 درجه ~ حدود 18 کیلومتر
+        const step = 0.18;
+        const minLat = 27.3, maxLat = 31.4;
+        const minLon = 50.6, maxLon = 55.4;
 
-                    // داده‌های روز فردا
-                    const temp = data.daily.temperature_2m_max[1];
-                    const rh = data.daily.relative_humidity_2m_mean[1];
-                    const wind = data.daily.wind_speed_10m_max[1];
-                    const rain = data.daily.precipitation_sum[1];
-
-                    // فرمول محاسبه FWI
-                    let fwi = (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - (rain * 2);
-                    if (fwi < 0) fwi = 0;
-
-                    const color = getColor(fwi);
-
-                    const marker = L.circleMarker([st.lat, st.lon], {
-                        radius: 13,
-                        fillColor: color,
-                        color: '#000000',
-                        weight: 1.5,
-                        fillOpacity: 0.9
-                    }).addTo(map);
-
-                    marker.bindPopup(`
-                        <div style="padding: 4px;">
-                            <h4 style="color:#38bdf8;">ایستگاه ${st.name}</h4>
-                            <p style="margin-top:6px; font-size: 0.95rem;">🔥 <b>شاخص FWI فردا: ${fwi.toFixed(1)}</b></p>
-                            <hr style="border-color:#334155; margin:6px 0;">
-                            <p style="font-size:0.8rem;">🌡️ حداکثر دما: ${temp} °C</p>
-                            <p style="font-size:0.8rem;">💧 میانگین رطوبت: ${rh}%</p>
-                            <p style="font-size:0.8rem;">💨 سرعت باد: ${wind} km/h</p>
-                        </div>
-                    `);
-                } catch (e) {
-                    console.error("خطا در ایستگاه " + st.name, e);
-                }
+        const gridCells = [];
+        for (let lat = minLat; lat <= maxLat; lat += step) {
+            for (let lon = minLon; lon <= maxLon; lon += step) {
+                gridCells.push({
+                    latCenter: parseFloat((lat + step / 2).toFixed(4)),
+                    lonCenter: parseFloat((lon + step / 2).toFixed(4)),
+                    bounds: [
+                        [lat, lon],
+                        [lat + step, lon + step]
+                    ]
+                });
             }
         }
 
-        loadFWIForecast();
+        // ۴. فراخوانی دسته‌ای داده‌ها برای پردازش سریع
+        async function loadGridFWI() {
+            const batchSize = 10;
+            let completed = 0;
+            const progressEl = document.getElementById('loading-progress');
+
+            for (let i = 0; i < gridCells.length; i += batchSize) {
+                const batch = gridCells.slice(i, i + batchSize);
+                
+                await Promise.all(batch.map(async (cell) => {
+                    try {
+                        const url = `https://api.open-meteo.com/v1/forecast?latitude=${cell.latCenter}&longitude=${cell.lonCenter}&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum&timezone=Asia%2FTehran&forecast_days=2`;
+                        const res = await fetch(url);
+                        const data = await res.json();
+
+                        const temp = data.daily.temperature_2m_max[1];
+                        const rh = data.daily.relative_humidity_2m_mean[1];
+                        const wind = data.daily.wind_speed_10m_max[1];
+                        const rain = data.daily.precipitation_sum[1];
+
+                        // فرمول محاسبه FWI
+                        let fwi = (temp * 0.4) + (wind * 0.3) - (rh * 0.15) - (rain * 2);
+                        if (fwi < 0) fwi = 0;
+
+                        const color = getColor(fwi);
+
+                        // رسم مستطیل پهنه‌ای با شفافیت برای شبیه‌سازی Heatmap
+                        const rect = L.rectangle(cell.bounds, {
+                            color: color,
+                            weight: 0.5,
+                            fillColor: color,
+                            fillOpacity: 0.55
+                        }).addTo(map);
+
+                        rect.bindPopup(`
+                            <div style="padding: 4px;">
+                                <h4 style="color:#38bdf8;">موقعیت سلول: ${cell.latCenter}, ${cell.lonCenter}</h4>
+                                <p style="margin-top:6px; font-size: 0.95rem;">🔥 <b>شاخص FWI فردا: ${fwi.toFixed(1)}</b></p>
+                                <hr style="border-color:#334155; margin:6px 0;">
+                                <p style="font-size:0.8rem;">🌡️ دما: ${temp} °C</p>
+                                <p style="font-size:0.8rem;">💧 رطوبت: ${rh}%</p>
+                                <p style="font-size:0.8rem;">💨 سرعت باد: ${wind} km/h</p>
+                            </div>
+                        `);
+                    } catch (e) {
+                        console.error("خطا در فراخوانی سلول", e);
+                    }
+                }));
+
+                completed += batch.length;
+                progressEl.innerText = `در حال دریافت پهنه‌ها: ${Math.round((completed / gridCells.length) * 100)}%`;
+            }
+
+            progressEl.style.display = 'none';
+        }
+
+        loadGridFWI();
     </script>
 </body>
 </html>
