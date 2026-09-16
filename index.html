@@ -4,34 +4,53 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>سامانه پهنه‌بندی تفکیکی FWI استان فارس</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css0f172a; color: #fff; overflow: hidden; }
-  header { height: 60px; padding: 10px 20px; background: #1e293b; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: Tahoma, sans-serif;
+    background: #0f172a;
+    color: #fff;
+    overflow: hidden;
+  }
+  header {
+    height: 60px;
+    padding: 10px 20px;
+    background: #1e293b;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #334155;
+  }
   header h1 { font-size: 17px; color: #f97316; margin: 0; }
   header p { font-size: 11px; color: #94a3b8; margin: 3px 0 0; }
-  
-  #map { 
-    width: 100vw; 
-    height: calc(100vh - 60px); 
-    background: #0f172a; 
-    direction: ltr !important; 
+  #map {
+    width: 100vw;
+    height: calc(100vh - 60px);
+    background: #0f172a;
+    direction: ltr !important;
     text-align: left !important;
   }
-  
-  /* راهنمای نقشه */
-  .legend { 
-    position: absolute; bottom: 25px; right: 25px; 
-    background: rgba(15,23,42,0.95); 
-    padding: 12px 16px; border-radius: 8px; 
-    font-size: 12px; z-index: 1000; 
-    border: 1px solid #334155; 
+  .legend {
+    position: absolute;
+    bottom: 25px;
+    right: 25px;
+    background: rgba(15,23,42,0.95);
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    z-index: 1000;
+    border: 1px solid #334155;
     box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-    direction: rtl; text-align: right;
+    direction: rtl;
+    text-align: right;
   }
   .legend-title { font-weight: bold; margin-bottom: 6px; color: #e2e8f0; }
   .legend-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-weight: bold; }
   .color-box { width: 18px; height: 12px; border-radius: 3px; display: inline-block; }
-
-  /* استایل پاپ‌آپ متحرک روی ماوس */
   .custom-tooltip {
     background: rgba(15, 23, 42, 0.95) !important;
     border: 1px solid #38bdf8 !important;
@@ -68,22 +87,17 @@
 </div>
 
 <script>
-const map = L.map('map', {
-  attributionControl: false
-}).setView([29.3, 53.2], 7);
+const map = L.map('map', { attributionControl: false }).setView([29.3, 53.2], 7);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 18
-}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
 
-// تابع دقیق تطبیق مقدار FWI با رنگ راهنما
 function getColor(fwi) {
   const val = parseFloat(fwi);
-  if (val > 40) return '#7f1d1d'; // بحرانی
-  if (val > 30) return '#ef4444'; // خیلی بالا
-  if (val > 20) return '#f97316'; // بالا
-  if (val > 10) return '#eab308'; // متوسط
-  return '#22c55e';              // کم
+  if (val > 40) return '#7f1d1d';
+  if (val > 30) return '#ef4444';
+  if (val > 20) return '#f97316';
+  if (val > 10) return '#eab308';
+  return '#22c55e';
 }
 
 const districtData = new Map();
@@ -91,19 +105,16 @@ let geojsonLayer;
 
 async function fetchWeatherData(lat, lng) {
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(2)}&longitude=${lng.toFixed(2)}&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum&timezone=Asia%2FTehran&forecast_days=2`;
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(2) + '&longitude=' + lng.toFixed(2) + '&daily=temperature_2m_max,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum&timezone=Asia%2FTehran&forecast_days=2';
     const res = await fetch(url);
-    if (!res.ok) throw new Error();
+    if (!res.ok) throw new Error('API error');
     const data = await res.json();
-    
     const t = data.daily.temperature_2m_max[1];
     const h = data.daily.relative_humidity_2m_mean[1];
     const w = data.daily.wind_speed_10m_max[1];
     const r = data.daily.precipitation_sum[1];
-    
     let fwi = (t * 0.75) + (w * 0.45) - (h * 0.2) - (r * 5);
     if (fwi < 5) fwi = 5 + Math.random() * 5;
-
     return { fwi: fwi.toFixed(1), temp: t, humidity: h, wind: w };
   } catch (e) {
     let mockFWI = (31.5 - lat) * 6 + Math.floor(Math.random() * 8);
@@ -117,11 +128,10 @@ async function initMap() {
     const response = await fetch('fars_districts.geojson');
     const geojsonData = await response.json();
 
-    // ۱. ساخت لایه‌ها و مدیریت هوشمند رویدادهای ماوس
     geojsonLayer = L.geoJSON(geojsonData, {
       style: function(feature) {
         return {
-          fillColor: feature.properties._color || '#22c55e',
+          fillColor: (feature.properties && feature.properties._color) ? feature.properties._color : '#22c55e',
           weight: 1.5,
           opacity: 1,
           color: '#ffffff',
@@ -129,73 +139,55 @@ async function initMap() {
         };
       },
       onEachFeature: function(feature, layer) {
-        const dName = feature.properties.Name_sh || feature.properties.مرکز || "نامشخص";
-        
-        layer.bindTooltip(`<b>شهرستان ${dName}</b><br>⌛ در حال دریافت داده...`, {
+        const dName = (feature.properties && (feature.properties.Name_sh || feature.properties.Name || feature.properties.name)) || 'نامشخص';
+
+        layer.bindTooltip('<b>شهرستان ' + dName + '</b><br>⌛ در حال دریافت داده...', {
           sticky: true,
-          direction: "top",
-          className: "custom-tooltip"
+          direction: 'top',
+          className: 'custom-tooltip'
         });
 
         layer.on({
           mouseover: function(e) {
-            const l = e.target;
-            l.setStyle({ weight: 3, color: '#38bdf8', fillOpacity: 0.95 });
-            l.bringToFront();
+            e.target.setStyle({ weight: 3, color: '#38bdf8', fillOpacity: 0.95 });
+            e.target.bringToFront();
           },
           mouseout: function(e) {
-            const l = e.target;
-            // بازگشت دقیق به رنگ اصلی FWI شهرستان
-            l.setStyle({
-              weight: 1.5,
-              color: '#ffffff',
-              fillColor: l.feature.properties._color || '#22c55e',
-              fillOpacity: 0.8
-            });
+            const c = (e.target.feature.properties && e.target.feature.properties._color) ? e.target.feature.properties._color : '#22c55e';
+            e.target.setStyle({ weight: 1.5, color: '#ffffff', fillColor: c, fillOpacity: 0.8 });
           }
         });
       }
     }).addTo(map);
 
     map.fitBounds(geojsonLayer.getBounds(), { padding: [20, 20] });
-    setTimeout(() => { map.invalidateSize(); }, 300);
+    setTimeout(function() { map.invalidateSize(); }, 300);
 
-    // ۲. استعلام داده‌های هواشناسی
-    const fetchPromises = geojsonData.features.map(async (feature) => {
-      const dName = feature.properties.Name_sh || feature.properties.مرکز || "نامشخص";
+    const fetchPromises = geojsonData.features.map(async function(feature) {
+      const dName = (feature.properties && (feature.properties.Name_sh || feature.properties.Name || feature.properties.name)) || 'نامشخص';
       const tempL = L.geoJSON(feature);
       const center = tempL.getBounds().getCenter();
       const weather = await fetchWeatherData(center.lat, center.lng);
-      districtData.set(feature, { name: dName, ...weather });
+      districtData.set(feature, { name: dName, fwi: weather.fwi, temp: weather.temp, humidity: weather.humidity, wind: weather.wind });
     });
 
     await Promise.all(fetchPromises);
 
-    // ۳. تزریق رنگ‌های دقیق طبق FWI محاسباتی به هر شهرستان
     geojsonLayer.eachLayer(function(layer) {
       const feature = layer.feature;
       const data = districtData.get(feature);
       if (data) {
         const targetColor = getColor(data.fwi);
-        
-        // ذخیره ماندگار رنگ روی feature
         feature.properties._color = targetColor;
+        layer.setStyle({ fillColor: targetColor, fillOpacity: 0.8 });
 
-        // اعمال مستقیم روی لایه
-        layer.setStyle({
-          fillColor: targetColor,
-          fillOpacity: 0.8
-        });
-
-        // تنظیم متن جامع پاپ‌آپ
-        const tooltipContent = `
-          <b style="font-size:14px; color:#38bdf8;">شهرستان ${data.name}</b><br>
-          🔥 شاخص FWI فردا: <b style="font-size:14px; color:#f97316;">${data.fwi}</b><br>
-          🌡️ بیشینه دما: <b>${data.temp} °C</b><br>
-          💧 رطوبت نسبی: <b>${data.humidity} %</b><br>
-          💨 سرعت باد: <b>${data.wind} km/h</b>
-        `;
-        layer.setTooltipContent(tooltipContent);
+        layer.setTooltipContent(
+          '<b style="font-size:14px; color:#38bdf8;">شهرستان ' + data.name + '</b><br>' +
+          '🔥 شاخص FWI فردا: <b style="font-size:14px; color:#f97316;">' + data.fwi + '</b><br>' +
+          '🌡️ بیشینه دما: <b>' + data.temp + ' °C</b><br>' +
+          '💧 رطوبت نسبی: <b>' + data.humidity + ' %</b><br>' +
+          '💨 سرعت باد: <b>' + data.wind + ' km/h</b>'
+        );
       }
     });
 
