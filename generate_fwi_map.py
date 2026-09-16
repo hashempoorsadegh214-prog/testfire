@@ -1,23 +1,21 @@
-import os
 import requests
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import Rbf
 
-# ۱. تعریف دامنه جغرافیایی استان فارس
+# محدوده جغرافیایی استان فارس
 MIN_LAT, MAX_LAT = 27.0, 31.6
 MIN_LON, MAX_LON = 50.4, 55.6
 
-# شبکه ایستگاهی/نقاط نمونه‌برداری جهت دریافت داده
-lats = np.linspace(MIN_LAT, MAX_LAT, 12)
-lons = np.linspace(MIN_LON, MAX_LON, 12)
+# شبکه نقاط نمونه‌برداری
+lats = np.linspace(MIN_LAT, MAX_LAT, 14)
+lons = np.linspace(MIN_LON, MAX_LON, 14)
 
 points = []
 fwi_values = []
 
-print("در حال دریافت داده‌های پیش‌بینی هواشناسی استان فارس...")
+print("در حال دریافت داده‌های هواشناسی استان فارس...")
 
-# ۲. دریافت داده‌های Open-Meteo برای شبکه نقاط
 for lat in lats:
     for lon in lons:
         try:
@@ -36,30 +34,30 @@ for lat in lats:
                 
             points.append((lon, lat))
             fwi_values.append(fwi)
-        except Exception as e:
+        except Exception:
             continue
 
 points = np.array(points)
 fwi_values = np.array(fwi_values)
 
-# ۳. درونیابی فضایی پیوسته (RBF / Spatial Interpolation)
+# درونیابی فضایی پیوسته (RBF)
 grid_lon, grid_lat = np.meshgrid(
-    np.linspace(MIN_LON, MAX_LON, 400),
-    np.linspace(MIN_LAT, MAX_LAT, 400)
+    np.linspace(MIN_LON, MAX_LON, 500),
+    np.linspace(MIN_LAT, MAX_LAT, 500)
 )
 
 rbf = Rbf(points[:, 0], points[:, 1], fwi_values, function='multiquadric', smooth=0.1)
 grid_fwi = rbf(grid_lon, grid_lat)
-grid_fwi = np.clip(grid_fwi, 0, 50) # محدودسازی بازه FWI
+grid_fwi = np.clip(grid_fwi, 0, 45)
 
-# ۴. رندر تصویر رستری شفاف (PNG)
+# ساخت تصویر با شفافیت بالا
 plt.figure(figsize=(10, 10), dpi=300)
 ax = plt.axes([0, 0, 1, 1], frameon=False)
 ax.get_xaxis().set_visible(False)
 ax.get_yaxis().set_visible(False)
 
-# پالت رنگی استاندارد FWI (سبز -> زرد -> نارنجی -> قرمز -> عنابی)
-cmap = plt.cm.get_cmap('YlOrRd')
+# رنگ‌بندی شفاف (YlOrRd)
+cmap = plt.cm.YlOrRd
 
 plt.imshow(
     grid_fwi, 
@@ -67,12 +65,11 @@ plt.imshow(
     origin='lower', 
     cmap=cmap, 
     vmin=0, 
-    vmax=40,
+    vmax=35,
     alpha=0.65
 )
 
-# ذخیره تصویر با پس‌زمینه شفاف
 plt.savefig('fwi_map.png', transparent=True, bbox_inches='tight', pad_inches=0)
 plt.close()
 
-print("تصویر رستری پهنه‌بندی fwi_map.png با موفقیت تولید شد.")
+print("فایل fwi_map.png با موفقیت تولید شد.")
